@@ -1,3 +1,5 @@
-numpy
-fastapi
-uvicorn
+fastapi==0.115.0
+uvicorn==0.30.0
+numpy==1.24.3
+pydantic==2.5.0
+python-multipart==0.0.6
