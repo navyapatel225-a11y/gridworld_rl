@@ -1,39 +1,60 @@
-import numpy as np
-from typing import Tuple, Dict, Any
+import os
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Dict, Any, List
+import sys
 
-class AdvancedGridWorld:
-    def __init__(self, size: int = 5):
-        self.size = size
-        self.reset()
+# Add parent directory to path to import environment
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-    def reset(self) -> np.ndarray:
-        self.agent_pos = [0, 0]
-        self.goal = [self.size - 1, self.size - 1]
-        self.steps = 0
-        return np.array(self.agent_pos)
+from environment import AdvancedGridWorld
 
-    def step(self, action: int) -> Tuple[np.ndarray, float, bool, Dict[str, Any]]:
-        # 0: up, 1: down, 2: left, 3: right
-        if action == 0:
-            self.agent_pos[1] -= 1
-        elif action == 1:
-            self.agent_pos[1] += 1
-        elif action == 2:
-            self.agent_pos[0] -= 1
-        elif action == 3:
-            self.agent_pos[0] += 1
+# THIS MUST BE NAMED 'app' - it's what the root app.py imports
+app = FastAPI(title="GridWorld RL Environment", description="OpenEnv compatible RL environment")
 
-        # bounds checking
-        self.agent_pos[0] = max(0, min(self.size - 1, self.agent_pos[0]))
-        self.agent_pos[1] = max(0, min(self.size - 1, self.agent_pos[1]))
+# Initialize environment
+env = AdvancedGridWorld(size=5)
 
-        self.steps += 1
+class StepRequest(BaseModel):
+    action: int
 
-        done = self.agent_pos == self.goal
+class StepResponse(BaseModel):
+    observation: List[int]
+    reward: float
+    done: bool
+    info: Dict[str, Any]
 
-        # reward: -0.1 per step, +10 for reaching goal
-        reward = 10.0 if done else -0.1
+@app.get("/")
+def root():
+    return {
+        "status": "running",
+        "environment": "AdvancedGridWorld",
+        "size": env.size,
+        "endpoints": ["/reset", "/step"]
+    }
 
-        info = {"steps": self.steps, "position": self.agent_pos.copy()}
+@app.post("/reset")
+def reset():
+    obs = env.reset()
+    return {"observation": obs.tolist()}
 
-        return np.array(self.agent_pos), reward, done, info
+@app.post("/step")
+def step(request: StepRequest):
+    if request.action not in [0, 1, 2, 3]:
+        raise HTTPException(status_code=400, detail="Action must be 0-3")
+    
+    obs, reward, done, info = env.step(request.action)
+    return StepResponse(
+        observation=obs.tolist(),
+        reward=float(reward),
+        done=bool(done),
+        info=info
+    )
+
+def main():
+    import uvicorn
+    port = int(os.environ.get("PORT", 7860))
+    uvicorn.run(app, host="0.0.0.0", port=port)
+
+if __name__ == "__main__":
+    main()
