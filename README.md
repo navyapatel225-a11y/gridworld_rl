@@ -1,5 +1,5 @@
 ---
-title: gridworld-rl
+title: gridworld_rl
 emoji: 🤖
 colorFrom: blue
 colorTo: green
