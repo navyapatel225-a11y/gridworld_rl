@@ -1,0 +1,9 @@
+title: gridworld-rl
+description: Simple GridWorld RL environment
+
+entry_point: server.app:app
+
+reset_endpoint: /reset
+step_endpoint: /step
+
+method: POST
